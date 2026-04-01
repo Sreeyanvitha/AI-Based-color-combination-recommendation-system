@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Style Analyzer</title>
+    <!-- Modern Poppins font as requested -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <!-- Reverted smooth header -->
+        <header>
+            <div class="logo-icon">👗✨👔</div>
+            <h1>Outfit Color Recommendation System</h1>
+            <p>Discover your perfect color palette</p>
+        </header>
+
+        <form action="/analyze" method="POST" enctype="multipart/form-data" id="outfit-form">
+            
+            <div class="form-group image-upload-section">
+                <label style="justify-content: center; margin-bottom: 12px;">Outfit Input</label>
+                
+                <div class="upload-options">
+                    <div class="upload-btn-wrapper">
+                        <button type="button" class="btn-secondary">📁 Upload File</button>
+                        <input type="file" id="outfit_image" name="outfit_image" accept="image/*" onchange="previewSelectedImage(event)">
+                    </div>
+
+                    <span class="or-divider">OR</span>
+
+                    <button type="button" class="btn-secondary" id="start-camera-btn">📸 Take Picture</button>
+                </div>
+
+                <div id="camera-container" class="hidden">
+                    <video id="camera-stream" autoplay playsinline></video>
+                    <button type="button" id="snap-btn" class="btn-action">Capture Snapshot</button>
+                </div>
+
+                <div id="image-preview-container" class="hidden">
+                    <img id="image-preview" src="#" alt="Preview">
+                    <button type="button" id="remove-image-btn" class="btn-text">Remove Image</button>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half-width">
+                    <label for="occasion">Occasion</label>
+                    <select id="occasion" name="occasion" required>
+                        <option value="" disabled selected>Select vibe...</option>
+                        <option value="office">💼 Office</option>
+                        <option value="casual">👖 Casual</option>
+                        <option value="festive">🎉 Festive</option>
+                        <option value="party">🥂 Party</option>
+                        <option value="wedding">💍 Wedding</option>
+                    </select>
+                </div>
+
+                <div class="form-group half-width">
+                    <label for="skin_tone">Skin Tone</label>
+                    <select id="skin_tone" name="skin_tone" required onchange="toggleSkinUpload(this.value)">
+                        <option value="" disabled selected>Select an option...</option>
+                        <option value="auto">🤖 Auto-detect with AI</option>
+                        <option value="fair">Fair</option>
+                        <option value="medium">Medium</option>
+                        <option value="dusky">Dusky</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Skin Tone AI Photo Section -->
+            <div id="skin-upload-container" class="form-group image-upload-section hidden">
+                <label style="justify-content: center; margin-bottom: 12px;">Your Photo (For Skin Tone AI)</label>
+                
+                <div class="upload-options">
+                    <div class="upload-btn-wrapper">
+                        <button type="button" class="btn-secondary">📁 Upload Photo</button>
+                        <input type="file" id="skin_image" name="skin_image" accept="image/*" onchange="previewSkinImage(event)">
+                    </div>
+                    <span class="or-divider">OR</span>
+                    <button type="button" class="btn-secondary" id="start-skin-camera-btn">📸 Take Picture</button>
+                </div>
+
+                <div id="skin-camera-container" class="hidden">
+                    <video id="skin-camera-stream" autoplay playsinline></video>
+                    <button type="button" id="skin-snap-btn" class="btn-action">Capture Snapshot</button>
+                </div>
+
+                <div id="skin-preview-container" class="hidden">
+                    <img id="skin-preview" src="#" alt="Skin Preview">
+                    <button type="button" id="remove-skin-btn" class="btn-text">Remove Photo</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="preferred_colors">
+                    Preferred Colors 
+                    <span class="badge-optional">Optional</span>
+                </label>
+                <input type="text" id="preferred_colors" name="preferred_colors" placeholder="e.g., Ruby Red, Pastel Blue...">
+            </div>
+
+            <button type="submit" class="submit-btn" id="analyze-btn">Analyze Outfit</button>
+        </form>
+
+        <!-- New: Placeholder Section for Results -->
+        <div id="results-placeholder" class="hidden" style="margin-top: 30px; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; animation: fadeIn 0.5s ease;">
+            <h3 style="color: #2d3748; margin-bottom: 10px;">Your Recommendations</h3>
+            <p style="color: #718096; font-size: 14px; margin-bottom: 20px;">The AI has processed your outfit and complexion. Here are your ideal matches:</p>
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #FF512F; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #F27121; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #83a4d4; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>
+            </div>
+            <button class="btn-secondary" onclick="document.getElementById('results-placeholder').classList.add('hidden')">Reset</button>
+        </div>
+
+        <!-- Logout Redirect Link -->
+        <div style="text-align: center; margin-top: 25px;">
+            <a href="login.html" style="font-size: 13px; color: #718096; text-decoration: none; font-weight: 500;">🔒 <span style="color: #FF5F6D;">Sign Out</span></a>
+        </div>
+    </div>
+
+    <!-- Interface Scripts -->
+    <script>
+        function toggleSkinUpload(value) {
+            const container = document.getElementById('skin-upload-container');
+            const skinInput = document.getElementById('skin_image');
+            if (value === 'auto') {
+                container.classList.remove('hidden');
+                skinInput.setAttribute('required', 'true');
+            } else {
+                container.classList.add('hidden');
+                skinInput.removeAttribute('required');
+            }
+        }
+        
+        // --- DOM Elements ---
+        const cameraBtn = document.getElementById('start-camera-btn');
+        const cameraContainer = document.getElementById('camera-container');
+        const video = document.getElementById('camera-stream');
+        const snapBtn = document.getElementById('snap-btn');
+        const fileInput = document.getElementById('outfit_image');
+        
+        const previewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+        
+        const skinCameraBtn = document.getElementById('start-skin-camera-btn');
+        const skinCameraContainer = document.getElementById('skin-camera-container');
+        const skinVideo = document.getElementById('skin-camera-stream');
+        const skinSnapBtn = document.getElementById('skin-snap-btn');
+        const skinFileInput = document.getElementById('skin_image');
+        
+        const skinPreviewContainer = document.getElementById('skin-preview-container');
+        const skinPreview = document.getElementById('skin-preview');
+        const removeSkinBtn = document.getElementById('remove-skin-btn');
+
+        const form = document.getElementById('outfit-form');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const resultsPlaceholder = document.getElementById('results-placeholder');
+
+        let stream = null;
+        let skinStream = null;
+
+        // --- OUTFIT CAMERA LOGIC ---
+        function previewSelectedImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    showPreview(e.target.result);
+                    stopCamera(); 
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        cameraBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                cameraContainer.classList.remove('hidden');
+                previewContainer.classList.add('hidden');
+            } catch (err) {
+                alert("Camera access denied. Be sure to accept browser permissions.");
+            }
+        });
+
+        snapBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            showPreview(canvas.toDataURL('image/jpeg'));
+            
+            canvas.toBlob((blob) => {
+                const file = new File([blob], "outfit_capture.jpg", { type: "image/jpeg" });
+                const dt = new DataTransfer(); dt.items.add(file);
+                fileInput.files = dt.files;
+            }, 'image/jpeg');
+            stopCamera();
+        });
+
+        function showPreview(src) {
+            imagePreview.src = src;
+            previewContainer.classList.remove('hidden');
+            cameraContainer.classList.add('hidden');
+        }
+
+        function stopCamera() {
+            if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+            cameraContainer.classList.add('hidden');
+        }
+
+        removeImageBtn.addEventListener('click', () => {
+            fileInput.value = ''; 
+            previewContainer.classList.add('hidden');
+        });
+
+        // --- SKIN TONE CAMERA LOGIC ---
+        function previewSkinImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    showSkinPreview(e.target.result);
+                    stopSkinCamera(); 
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        skinCameraBtn.addEventListener('click', async () => {
+            try {
+                skinStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                skinVideo.srcObject = skinStream;
+                skinCameraContainer.classList.remove('hidden');
+                skinPreviewContainer.classList.add('hidden');
+            } catch (err) {
+                alert("Camera access denied. Be sure to accept browser permissions.");
+            }
+        });
+
+        skinSnapBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = skinVideo.videoWidth;
+            canvas.height = skinVideo.videoHeight;
+            canvas.getContext('2d').drawImage(skinVideo, 0, 0, canvas.width, canvas.height);
+            showSkinPreview(canvas.toDataURL('image/jpeg'));
+            
+            canvas.toBlob((blob) => {
+                const file = new File([blob], "skin_capture.jpg", { type: "image/jpeg" });
+                const dt = new DataTransfer(); dt.items.add(file);
+                skinFileInput.files = dt.files;
+            }, 'image/jpeg');
+            stopSkinCamera();
+        });
+
+        function showSkinPreview(src) {
+            skinPreview.src = src;
+            skinPreviewContainer.classList.remove('hidden');
+            skinCameraContainer.classList.add('hidden');
+        }
+
+        function stopSkinCamera() {
+            if (skinStream) { skinStream.getTracks().forEach(t => t.stop()); skinStream = null; }
+            skinCameraContainer.classList.add('hidden');
+        }
+
+        removeSkinBtn.addEventListener('click', () => {
+            skinFileInput.value = ''; 
+            skinPreviewContainer.classList.add('hidden');
+        });
+
+        // --- FORM SUBMIT SIMULATION ---
+        form.addEventListener('submit', (e) => {
+            e.preventDefault(); 
+            
+            if (fileInput.files.length === 0) {
+                alert("Please drop in an outfit photo so we can style you!");
+                return;
+            } 
+            
+            const skinDropdown = document.getElementById('skin_tone');
+            if (skinDropdown.value === 'auto' && skinFileInput.files.length === 0) {
+                alert("You chose 'Auto-detect' for your complexion. Please upload or take a quick selfie before proceeding.");
+                return;
+            }
+
+            analyzeBtn.innerHTML = "⏳ Analyzing...";
+            analyzeBtn.style.opacity = "0.7";
+            
+            setTimeout(() => {
+                analyzeBtn.innerHTML = "Analyze Outfit";
+                analyzeBtn.style.opacity = "1";
+                resultsPlaceholder.classList.remove('hidden');
+                
+                resultsPlaceholder.scrollIntoView({ behavior: 'smooth' });
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
